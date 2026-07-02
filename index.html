@@ -1,614 +1,752 @@
-import React, { useState, useMemo } from 'react';
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero de Control Unificado - Sell-In & Trade Marketing</title>
+    <!-- Tailwind CSS para el diseño premium y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            950: '#0b0f19',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos personalizados para animaciones y scrollbar sutil */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 md:p-6">
 
-// === BASE DE DATOS INTEGRADA (Sell-In y Trade Marketing) ===
-
-const BASE_SELL_IN = [
-  { id: 1, agencia: 'Central', vendedor: 'Vendedor A', cliente: 'Huguito SRL', producto: 'Kitadol Forte', unidades: 0, valores: 0, variacion: -100, status: 'Bloqueado (Sin Compra)', detalle: 'Alta saturación de stock en sucursales' },
-  { id: 2, agencia: 'Central', vendedor: 'Vendedor A', cliente: 'Huguito SRL', producto: 'Kitadol Rapid 400', unidades: 25000, valores: 12500, variacion: 15, status: 'Reposición Activa', detalle: 'Venta fluida, reponiendo quiebre' },
-  { id: 3, agencia: 'Central', vendedor: 'Vendedor B', cliente: 'Distripharma', producto: 'Kitadol Forte', unidades: 0, valores: 0, variacion: -100, status: 'Bloqueado (Sin Compra)', detalle: 'Inventario suficiente para todo el semestre' },
-  { id: 4, agencia: 'Central', vendedor: 'Vendedor B', cliente: 'Distripharma', producto: 'Kitadol Gel', unidades: 1000, valores: 3500, variacion: 20, status: 'Crecimiento Sano', detalle: 'Rotación moderada en droguería' },
-  { id: 5, agencia: 'Central', vendedor: 'Vendedor C', cliente: 'F. Divino Niño', producto: 'Kitadol Forte', unidades: 4000, valores: 2000, variacion: 8, status: 'Pedido Estabilizado', detalle: 'Esquema Just-In-Time balanceado' },
-  { id: 6, agencia: 'Central',
-    vendedor: 'Vendedor A', cliente: 'Daniels Industrial', producto: 'Kitadol Forte', unidades: 500000, valores: 250000, variacion: 120, status: 'Sobrecompra Masiva', detalle: 'Compra especulativa de volumen alto' },
-  { id: 7, agencia: 'Interior', vendedor: 'Vendedor C', cliente: 'Huguito SRL', producto: 'Kitadol Fem', unidades: 12000, valores: 7200, variacion: -12, status: 'Desaceleración', detalle: 'Baja estacional en sucursal' },
-  { id: 8, agencia: 'Interior', vendedor: 'Vendedor B', cliente: 'Distripharma', producto: 'Kitadol Fem', unidades: 18000, valores: 10800, variacion: 25, status: 'Crecimiento Sano', detalle: 'Buena colocación en farmacias asociadas' },
-];
-
-const BASE_TRADE = [
-  { id: 101, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Forte', sellOut: 29827, cobertura: 9.5, diagnostico: 'Sobrestock Severo', color: 'amber', comentario: 'Canal saturado por compras masivas a fines de 2025.' },
-  { id: 102, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Rapid 400', sellOut: 176, cobertura: 0.0, diagnostico: 'Quiebre Crítico', color: 'rose', comentario: 'Pérdida de venta en góndola. Requiere reposición inmediata.' },
-  { id: 103, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Gel', sellOut: 405, cobertura: 24.5, diagnostico: 'Stock Estancado', color: 'red', comentario: 'Inventario inmovilizado para 2 años. Alto riesgo de vencimiento.' },
-  { id: 104, cliente: 'Distripharma', sucursal: 'Sucursal Central', trade: 'Trade Ana', producto: 'Kitadol Forte', sellOut: 22266, cobertura: 5.4, diagnostico: 'Canal Lleno', color: 'amber', comentario: 'Salida estable, pero cuenta con suficiente stock por ahora.' },
-  { id: 105, cliente: 'F. Divino Niño', sucursal: 'Sucursal Abasto', trade: 'Trade Ana', producto: 'Kitadol Forte', sellOut: 1521, cobertura: 4.6, diagnostico: 'Rotación Óptima', color: 'emerald', comentario: 'Rotación fluida y nivel de stock sumamente equilibrado.' },
-  { id: 106, cliente: 'Daniels Industrial', sucursal: 'Sucursal Depósito', trade: 'Trade Luis', producto: 'Kitadol Forte', sellOut: 82022, cobertura: 11.0, diagnostico: 'Saturación Mayorista', color: 'amber', comentario: 'Capital inmovilizado. Se aconseja frenar los incentivos de Sell In.' },
-  { id: 107, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Fem', sellOut: 616, cobertura: 8.0, diagnostico: 'Sobrestock Moderado', color: 'amber', comentario: 'Inventario holgado, supervisar fechas de vencimiento de lotes.' },
-  { id: 108, cliente: 'Distripharma', sucursal: 'Sucursal Central', trade: 'Trade Ana', producto: 'Kitadol Fem', sellOut: 312, cobertura: 6.4, diagnostico: 'Inventario Sano', color: 'emerald', comentario: 'Flujo balanceado acorde con el promedio de evacuación mensual.' },
-  { id: 109, cliente: 'Distripharma', sucursal: 'Sucursal Central', trade: 'Trade Ana', producto: 'Kitadol Gel', sellOut: 308, cobertura: 3.2, diagnostico: 'Rotación Activa', color: 'emerald', comentario: 'Buena dinámica de salida. Preparar pedido para el próximo trimestre.' }
-];
-
-export default function App() {
-  // === ESTADOS DE LOS FILTROS (SEGMENTADORES) ===
-  const [filterAgencia, setFilterAgencia] = useState('Todos');
-  const [filterVendedor, setFilterVendedor] = useState('Todos');
-  const [filterCliente, setFilterCliente] = useState('Todos');
-  const [filterProducto, setFilterProducto] = useState('Todos');
-  const [filterTrade, setFilterTrade] = useState('Todos');
-
-  // Perfiles de Mando Ejecutivo para presets automáticos
-  const [perfilMando, setPerfilMando] = useState('Gerencial'); // Gerencial, Ventas, Trade
-
-  // Opciones únicas extraídas para los segmentadores
-  const agencias = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.agencia))];
-  const vendedores = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.vendedor))];
-  const clientes = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.cliente))];
-  const productos = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.producto))];
-  const trades = ['Todos', ...new Set(BASE_TRADE.map(item => item.trade))];
-
-  // Reset general de filtros
-  const resetFiltros = () => {
-    setFilterAgencia('Todos');
-    setFilterVendedor('Todos');
-    setFilterCliente('Todos');
-    setFilterProducto('Todos');
-    setFilterTrade('Todos');
-  };
-
-  // Configurar presets automáticos por perfil de mando
-  const aplicarPresetMando = (mando) => {
-    resetFiltros();
-    setPerfilMando(mando);
-    if (mando === 'Ventas') {
-      setFilterVendedor('Vendedor A');
-    } else if (mando === 'Trade') {
-      setFilterTrade('Trade Carlos');
-    }
-  };
-
-  // === PROCESAMIENTO DINÁMICO DE DATOS (FILTRADO CRUZADO) ===
-  const datosSellInFiltrados = useMemo(() => {
-    return BASE_SELL_IN.filter(item => {
-      const matchAgencia = filterAgencia === 'Todos' || item.agencia === filterAgencia;
-      const matchVendedor = filterVendedor === 'Todos' || item.vendedor === filterVendedor;
-      const matchCliente = filterCliente === 'Todos' || item.cliente === filterCliente;
-      const matchProducto = filterProducto === 'Todos' || item.producto === filterProducto;
-      return matchAgencia && matchVendedor && matchCliente && matchProducto;
-    });
-  }, [filterAgencia, filterVendedor, filterCliente, filterProducto]);
-
-  const datosTradeFiltrados = useMemo(() => {
-    return BASE_TRADE.filter(item => {
-      const matchCliente = filterCliente === 'Todos' || item.cliente === filterCliente;
-      const matchProducto = filterProducto === 'Todos' || item.producto === filterProducto;
-      const matchTrade = filterTrade === 'Todos' || item.trade === filterTrade;
-
-      // Filtrado cruzado indirecto (desde hoja 1 por vendedor/agencia si aplica)
-      let matchVendedor = true;
-      let matchAgencia = true;
-
-      if (filterVendedor !== 'Todos') {
-        const clientesDelVendedor = BASE_SELL_IN
-          .filter(si => si.vendedor === filterVendedor)
-          .map(si => si.cliente);
-        matchVendedor = clientesDelVendedor.includes(item.cliente);
-      }
-
-      if (filterAgencia !== 'Todos') {
-        const clientesDeAgencia = BASE_SELL_IN
-          .filter(si => si.agencia === filterAgencia)
-          .map(si => si.cliente);
-        matchAgencia = clientesDeAgencia.includes(item.cliente);
-      }
-
-      return matchCliente && matchProducto && matchTrade && matchVendedor && matchAgencia;
-    });
-  }, [filterCliente, filterProducto, filterTrade, filterVendedor, filterAgencia]);
-
-  // === CÁLCULO DE MÉTRICAS CLAVE ===
-  const totalFacturacion = useMemo(() => {
-    return datosSellInFiltrados.reduce((sum, item) => sum + item.valores, 0);
-  }, [datosSellInFiltrados]);
-
-  const totalUnidades = useMemo(() => {
-    return datosSellInFiltrados.reduce((sum, item) => sum + item.unidades, 0);
-  }, [datosSellInFiltrados]);
-
-  const promedioEvacuacion = useMemo(() => {
-    return datosTradeFiltrados.reduce((sum, item) => sum + item.sellOut, 0);
-  }, [datosTradeFiltrados]);
-
-  const coberturaPromedioMeses = useMemo(() => {
-    if (datosTradeFiltrados.length === 0) return 0;
-    const total = datosTradeFiltrados.reduce((sum, item) => sum + item.cobertura, 0);
-    return (total / datosTradeFiltrados.length).toFixed(1);
-  }, [datosTradeFiltrados]);
-
-  // === INTELIGENCIA DE NEGOCIO: ALERTAS Y RECOMENDACIONES ===
-  const insightsDinamicos = useMemo(() => {
-    const alertas = [];
-
-    const tieneHuguito = filterCliente === 'Huguito SRL' || (filterVendedor === 'Vendedor A' && filterCliente === 'Todos');
-    const tieneDaniels = filterCliente === 'Daniels Industrial' || (filterVendedor === 'Vendedor A' && filterCliente === 'Todos');
-
-    if (tieneHuguito) {
-      alertas.push({
-        tipo: 'quiebre',
-        titulo: '🚨 Alerta de Quiebre - Huguito SRL',
-        desc: 'Kitadol Rapid 400 está en quiebre absoluto (0.0 meses de stock). El cliente está perdiendo venta en góndola. Priorizar un pedido de reposición inmediato.'
-      });
-      alertas.push({
-        tipo: 'sobrestock',
-        titulo: '⚠️ Sobrestock Crítico - Huguito SRL',
-        desc: 'Kitadol Gel tiene 24.5 meses de stock acumulado. No insistir con Sell In. El equipo de Trade debe implementar exhibiciones especiales y promociones cruzadas.'
-      });
-    }
-
-    if (tieneDaniels) {
-      alertas.push({
-        tipo: 'saturacion',
-        titulo: '🛑 Saturación Mayorista - Daniels Industrial',
-        desc: 'Fuerte sobrefacturación en Kitadol Forte (+120% de Sell In) que ha estancado el canal con 11.0 meses de inventario. Pausar el empuje de venta de este SKU de inmediato.'
-      });
-    }
-
-    if (alertas.length === 0) {
-      alertas.push({
-        tipo: 'informacion',
-        titulo: '💡 Diagnóstico de Canal General',
-        desc: 'La caída de facturación de Kitadol Forte se debe a la saturación de inventario en los grandes distribuidores (Daniels y Huguito SRL). El consumidor sigue rotando el producto de forma constante.'
-      });
-    }
-
-    return alertas;
-  }, [filterCliente, filterVendedor]);
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 md:p-6">
-      
-      {/* HEADER DE BIENVENIDA Y ACCIONES */}
-      <header className="max-w-7xl mx-auto mb-6 bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-2xl backdrop-blur">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                Sincronización de Base de Datos Activa
-              </span>
-              <span className="text-xs text-slate-400">• Semestre Consolidado 2026</span>
+    <!-- HEADER DE BIENVENIDA Y ACCIONES -->
+    <header class="max-w-7xl mx-auto mb-6 bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-2xl backdrop-blur">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+                <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span class="px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                        Base de Datos en Tiempo Real
+                    </span>
+                    <span class="text-xs text-slate-400">• Semestre Consolidado 2026</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white">
+                    Tablero de Control Unificado <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-blue-500 font-extrabold">Sell-In & Trade Marketing</span>
+                </h1>
+                <p class="text-sm text-slate-400 mt-0.5">
+                    Conexión cruzada de Venta Mayorista Financiera (Hoja 1) con Auditoría Operativa de Sucursales (Hoja 2)
+                </p>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-              Tablero de Control Unificado <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-blue-500">Sell-In & Trade Marketing</span>
-            </h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Conexión cruzada de Venta Mayorista Financiera (Hoja 1) con Auditoría Operativa de Sucursales (Hoja 2)
-            </p>
-          </div>
 
-          {/* PRESETS DE PERFIL */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-950/80 p-2 rounded-xl border border-slate-800">
-            <span className="text-xs font-bold text-slate-400 px-2 uppercase tracking-wider">Mando Ejecutivo:</span>
-            <div className="grid grid-cols-3 gap-1 w-full sm:w-auto">
-              <button
-                onClick={() => aplicarPresetMando('Gerencial')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  perfilMando === 'Gerencial'
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                👑 Gerencia
-              </button>
-              <button
-                onClick={() => aplicarPresetMando('Ventas')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  perfilMando === 'Ventas'
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                📈 Ventas
-              </button>
-              <button
-                onClick={() => aplicarPresetMando('Trade')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  perfilMando === 'Trade'
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                }`}
-              >
-                🏪 Trade
-              </button>
+            <!-- PRESETS DE PERFIL (MANDOS EJECUTIVOS) -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                <span class="text-xs font-bold text-slate-400 px-2 uppercase tracking-wider">Mando Ejecutivo:</span>
+                <div class="grid grid-cols-3 gap-1 w-full sm:w-auto" id="preset-container">
+                    <button id="btn-preset-gerente" onclick="aplicarPresetMando('Gerencial')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                        👑 Gerencia
+                    </button>
+                    <button id="btn-preset-ventas" onclick="aplicarPresetMando('Ventas')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-900">
+                        📈 Ventas
+                    </button>
+                    <button id="btn-preset-trade" onclick="aplicarPresetMando('Trade')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-900">
+                        🏪 Trade
+                    </button>
+                </div>
             </div>
-          </div>
         </div>
-      </header>
+    </header>
 
-      {/* PANEL DE CONTROL PRINCIPAL */}
-      <main className="max-w-7xl mx-auto space-y-6">
+    <!-- PANEL DE CONTROL PRINCIPAL -->
+    <main class="max-w-7xl mx-auto space-y-6">
 
-        {/* ================= SECCIÓN DE SEGMENTADORES (SLICERS) ================= */}
-        <section className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              <h2 className="font-extrabold text-sm uppercase tracking-wider text-slate-200">Segmentadores de Datos de Conexión Cruzada</h2>
-            </div>
-            <button
-              onClick={resetFiltros}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-teal-400 px-3 py-1.5 rounded-lg font-medium transition-colors border border-slate-700/50 flex items-center gap-1"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H19" />
-              </svg>
-              Limpiar Slicers
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Slicer Agencia */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">🏢 Agencia</label>
-              <select
-                value={filterAgencia}
-                onChange={(e) => setFilterAgencia(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white"
-              >
-                {agencias.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
+        <!-- ================= SECCIÓN DE SEGMENTADORES (SLICERS) ================= -->
+        <section class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    <h2 class="font-extrabold text-sm uppercase tracking-wider text-slate-200">Segmentadores de Datos de Conexión Cruzada</h2>
+                </div>
+                <button
+                    onclick="resetFiltros()"
+                    class="text-xs bg-slate-800 hover:bg-slate-700 text-teal-400 px-3 py-1.5 rounded-lg font-medium transition-colors border border-slate-700/50 flex items-center gap-1 cursor-pointer"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H19" />
+                    </svg>
+                    Limpiar Slicers
+                </button>
             </div>
 
-            {/* Slicer Vendedor */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">👤 Vendedor</label>
-              <select
-                value={filterVendedor}
-                onChange={(e) => setFilterVendedor(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white"
-              >
-                {vendedores.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Slicer Agencia -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/85">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">🏢 Agencia</label>
+                    <select
+                        id="select-agencia"
+                        onchange="actualizarFiltro('filterAgencia', this.value)"
+                        class="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white cursor-pointer"
+                    >
+                    </select>
+                </div>
 
-            {/* Slicer Cliente */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">🤝 Cliente</label>
-              <select
-                value={filterCliente}
-                onChange={(e) => setFilterCliente(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white"
-              >
-                {clientes.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
+                <!-- Slicer Vendedor -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/85">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">👤 Vendedor</label>
+                    <select
+                        id="select-vendedor"
+                        onchange="actualizarFiltro('filterVendedor', this.value)"
+                        class="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white cursor-pointer"
+                    >
+                    </select>
+                </div>
 
-            {/* Slicer Producto */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">💊 Producto</label>
-              <select
-                value={filterProducto}
-                onChange={(e) => setFilterProducto(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white"
-              >
-                {productos.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </div>
+                <!-- Slicer Cliente -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/85">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">🤝 Cliente</label>
+                    <select
+                        id="select-cliente"
+                        onchange="actualizarFiltro('filterCliente', this.value)"
+                        class="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white cursor-pointer"
+                    >
+                    </select>
+                </div>
 
-            {/* Slicer Trade */}
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">🚗 Trade en Calle</label>
-              <select
-                value={filterTrade}
-                onChange={(e) => setFilterTrade(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white"
-              >
-                {trades.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
+                <!-- Slicer Producto -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/85">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">💊 Producto</label>
+                    <select
+                        id="select-producto"
+                        onchange="actualizarFiltro('filterProducto', this.value)"
+                        class="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white cursor-pointer"
+                    >
+                    </select>
+                </div>
+
+                <!-- Slicer Trade -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/85">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">🚗 Trade en Calle</label>
+                    <select
+                        id="select-trade"
+                        onchange="actualizarFiltro('filterTrade', this.value)"
+                        class="w-full bg-slate-900 border border-slate-800 text-sm rounded-lg p-2.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none text-white cursor-pointer"
+                    >
+                    </select>
+                </div>
             </div>
-          </div>
         </section>
 
-        {/* ================= TARJETAS DE MÉTRICAS (KPIs) ================= */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* Facturación Sell In */}
-          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Facturación Sell In</p>
-              <h3 className="text-2xl font-extrabold text-white mt-1">
-                ${totalFacturacion.toLocaleString('es-ES')}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Ingreso bruto de almacén</p>
-            </div>
-            <div className="p-3 bg-teal-500/10 text-teal-400 rounded-xl border border-teal-500/20">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Volumen Distribuido */}
-          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Volumen Sell In</p>
-              <h3 className="text-2xl font-extrabold text-white mt-1">
-                {totalUnidades.toLocaleString('es-ES')} <span className="text-sm font-medium text-slate-400">Uds</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Cantidad de cajas colocadas</p>
-            </div>
-            <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Rotación en Góndola */}
-          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Sell Out Mensual</p>
-              <h3 className="text-2xl font-extrabold text-white mt-1">
-                {promedioEvacuacion.toLocaleString('es-ES')} <span className="text-sm font-medium text-slate-400">Uds</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Salida promedio al público</p>
-            </div>
-            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Cobertura de Inventario */}
-          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
-            <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Cobertura Promedio</p>
-              <h3 className="text-2xl font-extrabold text-white mt-1">
-                {coberturaPromedioMeses} <span className="text-sm font-medium text-slate-400">Meses</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Disponibilidad en sucursales</p>
-            </div>
-            <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </div>
-
-        </section>
-
-        {/* ================= INTELIGENCIA DE DATOS: PANEL DE RECOMENDACIONES COMERCIALES ================= */}
-        <section className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </span>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">Recomendador Inteligente y Diagnóstico Directo</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {insightsDinamicos.map((insight, idx) => (
-              <div 
-                key={idx} 
-                className={`p-4 rounded-xl border flex flex-col justify-between ${
-                  insight.tipo === 'quiebre' 
-                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' 
-                    : insight.tipo === 'sobrestock' || insight.tipo === 'saturacion'
-                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                    : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
-                }`}
-              >
+        <!-- ================= TARJETAS DE MÉTRICAS (KPIs) ================= -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Facturación Sell In -->
+            <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
                 <div>
-                  <h4 className="text-sm font-bold flex items-center gap-1.5 mb-1 text-white">
-                    {insight.titulo}
-                  </h4>
-                  <p className="text-xs leading-relaxed">{insight.desc}</p>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Facturación Sell In</p>
+                    <h3 id="kpi-facturacion" class="text-2xl font-extrabold text-white mt-1">
+                        $0
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Ingreso bruto de almacén</p>
                 </div>
-                <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider">
-                  <span>Acción Recomendada:</span>
-                  <span className="px-2 py-0.5 bg-slate-900 text-slate-300 rounded-full border border-slate-800">
-                    {insight.tipo === 'quiebre' ? 'Reposición Prioritaria' : insight.tipo === 'informacion' ? 'Análisis Continuo' : 'Frenar Sell In'}
-                  </span>
+                <div class="p-3 bg-teal-500/10 text-teal-400 rounded-xl border border-teal-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                 </div>
-              </div>
-            ))}
-
-            {/* Simulación Gráfica de Stock vs Cobertura */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Simulador de Riesgo de Stock en Canal</h4>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-[11px] font-semibold text-slate-300 mb-1">
-                      <span>Quiebre (0 meses)</span>
-                      <span>{datosTradeFiltrados.filter(i => i.cobertura === 0).length} SKU(s)</span>
-                    </div>
-                    <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-rose-500 h-full" style={{ width: `${(datosTradeFiltrados.filter(i => i.cobertura === 0).length / Math.max(datosTradeFiltrados.length, 1)) * 100}%` }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px] font-semibold text-slate-300 mb-1">
-                      <span>Saludable (1 a 5 meses)</span>
-                      <span>{datosTradeFiltrados.filter(i => i.cobertura > 0 && i.cobertura <= 5).length} SKU(s)</span>
-                    </div>
-                    <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-emerald-500 h-full" style={{ width: `${(datosTradeFiltrados.filter(i => i.cobertura > 0 && i.cobertura <= 5).length / Math.max(datosTradeFiltrados.length, 1)) * 100}%` }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[11px] font-semibold text-slate-300 mb-1">
-                      <span>Sobrestock / Crítico ({'>'}5 meses)</span>
-                      <span>{datosTradeFiltrados.filter(i => i.cobertura > 5).length} SKU(s)</span>
-                    </div>
-                    <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-amber-500 h-full" style={{ width: `${(datosTradeFiltrados.filter(i => i.cobertura > 5).length / Math.max(datosTradeFiltrados.length, 1)) * 100}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
+
+            <!-- Volumen Distribuido -->
+            <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Volumen Sell In</p>
+                    <h3 id="kpi-volumen" class="text-2xl font-extrabold text-white mt-1">
+                        0 <span class="text-sm font-medium text-slate-400">Uds</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Cantidad de cajas colocadas</p>
+                </div>
+                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Rotación en Góndola -->
+            <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Sell Out Mensual</p>
+                    <h3 id="kpi-sellout" class="text-2xl font-extrabold text-white mt-1">
+                        0 <span class="text-sm font-medium text-slate-400">Uds</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Salida promedio al público</p>
+                </div>
+                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Cobertura de Inventario -->
+            <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Cobertura Promedio</p>
+                    <h3 id="kpi-cobertura" class="text-2xl font-extrabold text-white mt-1">
+                        0 <span class="text-sm font-medium text-slate-400">Meses</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Disponibilidad en sucursales</p>
+                </div>
+                <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================= INTELIGENCIA DE DATOS: PANEL DE RECOMENDACIONES COMERCIALES ================= -->
+        <section class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                </span>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-200">Recomendador Inteligente y Diagnóstico Directo</h3>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Tarjetas de Recomendaciones Dinámicas -->
+                <div id="alerts-container" class="space-y-3 flex flex-col justify-start">
+                    <!-- Las alertas se inyectarán de forma dinámica aquí -->
+                </div>
+
+                <!-- Simulación Gráfica de Stock vs Cobertura -->
+                <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/80 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+                            <span>Riesgo de Inventario en Canal</span>
+                            <span class="text-[10px] text-slate-500">Métrica Proyectiva</span>
+                        </h4>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-[11px] font-semibold text-slate-300 mb-1.5">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500"></span> Quiebre de Stock (0 Meses)
+                                    </span>
+                                    <span id="risk-count-quiebre">0 SKU(s)</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                                    <div id="risk-bar-quiebre" class="bg-rose-500 h-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] font-semibold text-slate-300 mb-1.5">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Rotación Saludable (1 a 5 Meses)
+                                    </span>
+                                    <span id="risk-count-saludable">0 SKU(s)</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                                    <div id="risk-bar-saludable" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] font-semibold text-slate-300 mb-1.5">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500"></span> Sobrestock Crítico (> 5 Meses)
+                                    </span>
+                                    <span id="risk-count-sobrestock">0 SKU(s)</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                                    <div id="risk-bar-sobrestock" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         {/* ================= SECCIÓN DE LAS DOS HOJAS DE REPORTES UNIFICADAS ================= */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Bloque A: Monitoreo de Sell In (Hoja 1) */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="p-1 bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-lg">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-                <h3 className="font-bold text-sm uppercase tracking-wider text-slate-200">Hoja 1: Monitoreo Comercial (Sell In)</h3>
-              </div>
-              <span className="text-xs text-slate-400 font-semibold bg-slate-850 px-2 py-1 rounded-md border border-slate-800">
-                {datosSellInFiltrados.length} Registros
-              </span>
+            <!-- Bloque A: Monitoreo de Sell In (Hoja 1) -->
+            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="p-1 bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-lg">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-slate-200">Hoja 1: Monitoreo Comercial (Sell In)</h3>
+                    </div>
+                    <span id="count-sellin" class="text-xs text-slate-400 font-semibold bg-slate-800 px-2 py-1 rounded-md border border-slate-700/50">
+                        0 Registros
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                                <th class="py-3 px-2">Cliente / Vendedor</th>
+                                <th class="py-3 px-2">Producto</th>
+                                <th class="py-3 px-2 text-right">Valores ($)</th>
+                                <th class="py-3 px-2 text-center">Var %</th>
+                                <th class="py-3 px-2">Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-sellin" class="divide-y divide-slate-800/40">
+                            <!-- Los datos de Sell-In se inyectarán de forma dinámica -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-2">Cliente / Vendedor</th>
-                    <th className="py-3 px-2">Producto</th>
-                    <th className="py-3 px-2 text-right">Valores ($)</th>
-                    <th className="py-3 px-2 text-center">Var %</th>
-                    <th className="py-3 px-2">Estatus</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {datosSellInFiltrados.map((item) => {
-                    const isNegative = item.variacion < 0;
-                    const isHuge = item.variacion > 100;
-                    return (
-                      <tr key={item.id} className="hover:bg-slate-900/30 transition-colors">
-                        <td className="py-3 px-2">
-                          <div className="font-bold text-white">{item.cliente}</div>
-                          <div className="text-[10px] text-slate-400">{item.vendedor} • {item.agencia}</div>
-                        </td>
-                        <td className="py-3 px-2 font-medium text-slate-300">{item.producto}</td>
-                        <td className="py-3 px-2 text-right font-extrabold text-white">
-                          ${item.valores.toLocaleString('es-ES')}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            isNegative 
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
-                              : isHuge
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
-                              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          }`}>
-                            {item.variacion > 0 ? `+${item.variacion}%` : `${item.variacion}%`}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2">
-                          <span className="text-[10px] text-slate-300 block max-w-[120px] truncate" title={item.status}>
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {datosSellInFiltrados.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="py-8 text-center text-slate-500 font-medium">
-                        Sin datos comerciales para los segmentadores seleccionados
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            <!-- Bloque B: Auditoría de Calle (Hoja 2) -->
+            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="p-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                        </span>
+                        <h3 class="font-bold text-sm uppercase tracking-wider text-slate-200">Hoja 2: Operatividad de Calle (Trade)</h3>
+                    </div>
+                    <span id="count-trade" class="text-xs text-slate-400 font-semibold bg-slate-800 px-2 py-1 rounded-md border border-slate-700/50">
+                        0 Sucursales
+                    </span>
+                </div>
 
-          {/* Bloque B: Auditoría de Calle (Hoja 2) */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 shadow-xl">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="p-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                  </svg>
-                </span>
-                <h3 className="font-bold text-sm uppercase tracking-wider text-slate-200">Hoja 2: Operatividad de Calle (Trade)</h3>
-              </div>
-              <span className="text-xs text-slate-400 font-semibold bg-slate-850 px-2 py-1 rounded-md border border-slate-800">
-                {datosTradeFiltrados.length} Sucursales
-              </span>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                                <th class="py-3 px-2">Punto de Venta / Trade</th>
+                                <th class="py-3 px-2">Producto</th>
+                                <th class="py-3 px-2 text-right">Sell Out</th>
+                                <th class="py-3 px-2 text-center">Cobertura</th>
+                                <th class="py-3 px-2">Diagnóstico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-trade" class="divide-y divide-slate-800/40">
+                            <!-- Los datos de Trade se inyectarán de forma dinámica -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-2">Punto de Venta / Trade</th>
-                    <th className="py-3 px-2">Producto</th>
-                    <th className="py-3 px-2 text-right">Sell Out</th>
-                    <th className="py-3 px-2 text-center">Cobertura</th>
-                    <th className="py-3 px-2">Diagnóstico</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {datosTradeFiltrados.map((item) => {
-                    const statusColor = item.cobertura === 0 
-                      ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' 
-                      : item.cobertura > 9 
-                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20 font-extrabold' 
-                      : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20';
-
-                    return (
-                      <tr key={item.id} className="hover:bg-slate-900/30 transition-colors">
-                        <td className="py-3 px-2">
-                          <div className="font-bold text-white">{item.cliente}</div>
-                          <div className="text-[10px] text-slate-400">{item.sucursal} • {item.trade}</div>
-                        </td>
-                        <td className="py-3 px-2 font-medium text-slate-300">{item.producto}</td>
-                        <td className="py-3 px-2 text-right font-extrabold text-white">
-                          {item.sellOut.toLocaleString('es-ES')} <span className="text-[10px] text-slate-400">Uds</span>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${statusColor}`}>
-                            {item.cobertura.toFixed(1)} Meses
-                          </span>
-                        </td>
-                        <td className="py-3 px-2">
-                          <div className="text-[11px] font-semibold text-slate-200">{item.diagnostico}</div>
-                          <div className="text-[9px] text-slate-400 max-w-[150px] truncate" title={item.comentario}>
-                            {item.comentario}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {datosTradeFiltrados.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="py-8 text-center text-slate-500 font-medium">
-                        Sin datos operativos para los segmentadores seleccionados
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
         </section>
 
-      </main>
+    </main>
 
-      {/* FOOTER EXPLICATIVO */}
-      <footer className="max-w-7xl mx-auto mt-6 text-center text-xs text-slate-500 py-6 border-t border-slate-900">
+    <!-- FOOTER EXPLICATIVO -->
+    <footer class="max-w-7xl mx-auto mt-6 text-center text-xs text-slate-500 py-6 border-t border-slate-900">
         <p>Dashboard interactivo unificado para uso exclusivo de Gerentes, Vendedores y personal de Trade Marketing.</p>
-        <p className="mt-1">© 2026 Sistema Corporativo de Análisis Comercial de Canales de Distribución.</p>
-      </footer>
+        <p class="mt-1">© 2026 Sistema Corporativo de Análisis Comercial de Canales de Distribución.</p>
+    </footer>
 
-    </div>
-  );
-}
+    <!-- LOGICA SCRIPT INTERACTIVA (SIMULA REACT STATE TOTALMENTE EN VANILLA JS) -->
+    <script>
+        // === BASE DE DATOS INTEGRADA (Sell-In y Trade Marketing) ===
+        const BASE_SELL_IN = [
+            { id: 1, agencia: 'Central', vendedor: 'Vendedor A', cliente: 'Huguito SRL', producto: 'Kitadol Forte', unidades: 0, valores: 0, variacion: -100, status: 'Bloqueado (Sin Compra)', detalle: 'Alta saturación de stock en sucursales' },
+            { id: 2, agencia: 'Central', vendedor: 'Vendedor A', cliente: 'Huguito SRL', producto: 'Kitadol Rapid 400', unidades: 25000, valores: 12500, variacion: 15, status: 'Reposición Activa', detalle: 'Venta fluida, reponiendo quiebre' },
+            { id: 3, agencia: 'Central', vendedor: 'Vendedor B', cliente: 'Distripharma', producto: 'Kitadol Forte', unidades: 0, valores: 0, variacion: -100, status: 'Bloqueado (Sin Compra)', detalle: 'Inventario suficiente para todo el semestre' },
+            { id: 4, agencia: 'Central', vendedor: 'Vendedor B', cliente: 'Distripharma', producto: 'Kitadol Gel', unidades: 1000, valores: 3500, variacion: 20, status: 'Crecimiento Sano', detalle: 'Rotación moderada en droguería' },
+            { id: 5, agencia: 'Central', vendedor: 'Vendedor C', cliente: 'F. Divino Niño', producto: 'Kitadol Forte', unidades: 4000, valores: 2000, variacion: 8, status: 'Pedido Estabilizado', detalle: 'Esquema Just-In-Time balanceado' },
+            { id: 6, agencia: 'Central', vendedor: 'Vendedor A', cliente: 'Daniels Industrial', producto: 'Kitadol Forte', unidades: 500000, valores: 250000, variacion: 120, status: 'Sobrecompra Masiva', detalle: 'Compra especulativa de volumen alto' },
+            { id: 7, agencia: 'Interior', vendedor: 'Vendedor C', cliente: 'Huguito SRL', producto: 'Kitadol Fem', unidades: 12000, valores: 7200, variacion: -12, status: 'Desaceleración', detalle: 'Baja estacional en sucursal' },
+            { id: 8, agencia: 'Interior', vendedor: 'Vendedor B', cliente: 'Distripharma', producto: 'Kitadol Fem', unidades: 18000, valores: 10800, variacion: 25, status: 'Crecimiento Sano', detalle: 'Buena colocación en farmacias asociadas' }
+        ];
+
+        const BASE_TRADE = [
+            { id: 101, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Forte', sellOut: 29827, cobertura: 9.5, diagnostico: 'Sobrestock Severo', color: 'amber', comentario: 'Canal saturado por compras masivas a fines de 2025.' },
+            { id: 102, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Rapid 400', sellOut: 176, cobertura: 0.0, diagnostico: 'Quiebre Crítico', color: 'rose', comentario: 'Pérdida de venta en góndola. Requiere reposición inmediata.' },
+            { id: 103, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Gel', sellOut: 405, cobertura: 24.5, diagnostico: 'Stock Estancado', color: 'red', comentario: 'Inventario inmovilizado para 2 años. Alto riesgo de vencimiento.' },
+            { id: 104, cliente: 'Distripharma', sucursal: 'Sucursal Central', trade: 'Trade Ana', producto: 'Kitadol Forte', sellOut: 22266, cobertura: 5.4, diagnostico: 'Canal Lleno', color: 'amber', comentario: 'Salida estable, pero cuenta con suficiente stock por ahora.' },
+            { id: 105, cliente: 'F. Divino Niño', sucursal: 'Sucursal Abasto', trade: 'Trade Ana', producto: 'Kitadol Forte', sellOut: 1521, cobertura: 4.6, diagnostico: 'Rotación Óptima', color: 'emerald', comentario: 'Rotación fluida y nivel de stock sumamente equilibrado.' },
+            { id: 106, cliente: 'Daniels Industrial', sucursal: 'Sucursal Depósito', trade: 'Trade Luis', producto: 'Kitadol Forte', sellOut: 82022, cobertura: 11.0, diagnostico: 'Saturación Mayorista', color: 'amber', comentario: 'Capital inmovilizado. Se aconseja frenar los incentivos de Sell In.' },
+            { id: 107, cliente: 'Huguito SRL', sucursal: 'Sucursal Oviedo', trade: 'Trade Carlos', producto: 'Kitadol Fem', sellOut: 616, cobertura: 8.0, diagnostico: 'Sobrestock Moderado', color: 'amber', comentario: 'Inventario holgado, supervisar fechas de vencimiento de lotes.' },
+            { id: 108, cliente: 'Distripharma', sucursal: 'Sucursal Central', trade: 'Trade Ana', producto: 'Kitadol Fem', sellOut: 312, cobertura: 6.4, diagnostico: 'Inventario Sano', color: 'emerald', comentario: 'Flujo balanceado acorde con el promedio de evacuación mensual.' },
+            { id: 109, cliente: 'Distripharma', sucursal: 'Sucursal Central', trade: 'Trade Ana', producto: 'Kitadol Gel', sellOut: 308, cobertura: 3.2, diagnostico: 'Rotación Activa', color: 'emerald', comentario: 'Buena dinámica de salida. Preparar pedido para el próximo trimestre.' }
+        ];
+
+        // === ESTADOS DE LOS FILTROS (REACTIVE STATE) ===
+        let filterAgencia = 'Todos';
+        let filterVendedor = 'Todos';
+        let filterCliente = 'Todos';
+        let filterProducto = 'Todos';
+        let filterTrade = 'Todos';
+        let perfilMando = 'Gerencial';
+
+        // Opciones únicas extraídas para los segmentadores
+        const agencias = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.agencia))];
+        const vendedores = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.vendedor))];
+        const clientes = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.cliente))];
+        const productos = ['Todos', ...new Set(BASE_SELL_IN.map(item => item.producto))];
+        const trades = ['Todos', ...new Set(BASE_TRADE.map(item => item.trade))];
+
+        // Inicializar los segmentadores (dropdowns)
+        function initSegmentators() {
+            populateSelect('select-agencia', agencias, filterAgencia);
+            populateSelect('select-vendedor', vendedores, filterVendedor);
+            populateSelect('select-cliente', clientes, filterCliente);
+            populateSelect('select-producto', productos, filterProducto);
+            populateSelect('select-trade', trades, filterTrade);
+        }
+
+        function populateSelect(id, list, selectedValue) {
+            const el = document.getElementById(id);
+            el.innerHTML = '';
+            list.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.innerText = item;
+                if (item === selectedValue) opt.selected = true;
+                el.appendChild(opt);
+            });
+        }
+
+        // Sincronizar UI de Presets
+        function renderPresetButtons() {
+            const container = document.getElementById('preset-container');
+            const btns = container.getElementsByTagName('button');
+            for (let btn of btns) {
+                btn.className = "px-3 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white hover:bg-slate-900 cursor-pointer";
+            }
+            if (perfilMando === 'Gerencial') {
+                document.getElementById('btn-preset-gerente').className = "px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 cursor-pointer";
+            } else if (perfilMando === 'Ventas') {
+                document.getElementById('btn-preset-ventas').className = "px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 cursor-pointer";
+            } else if (perfilMando === 'Trade') {
+                document.getElementById('btn-preset-trade').className = "px-3 py-2 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 cursor-pointer";
+            }
+        }
+
+        // Actualizar filtro individual
+        function actualizarFiltro(key, value) {
+            if (key === 'filterAgencia') filterAgencia = value;
+            if (key === 'filterVendedor') filterVendedor = value;
+            if (key === 'filterCliente') filterCliente = value;
+            if (key === 'filterProducto') filterProducto = value;
+            if (key === 'filterTrade') filterTrade = value;
+            
+            perfilMando = 'Personalizado';
+            renderPresetButtons();
+            procesarYRenderizar();
+        }
+
+        // Resetear todos los filtros
+        function resetFiltros() {
+            filterAgencia = 'Todos';
+            filterVendedor = 'Todos';
+            filterCliente = 'Todos';
+            filterProducto = 'Todos';
+            filterTrade = 'Todos';
+            perfilMando = 'Gerencial';
+            
+            initSegmentators();
+            renderPresetButtons();
+            procesarYRenderizar();
+        }
+
+        // Aplicar Preset de Mando
+        function aplicarPresetMando(mando) {
+            filterAgencia = 'Todos';
+            filterVendedor = 'Todos';
+            filterCliente = 'Todos';
+            filterProducto = 'Todos';
+            filterTrade = 'Todos';
+            perfilMando = mando;
+
+            if (mando === 'Ventas') {
+                filterVendedor = 'Vendedor A';
+            } else if (mando === 'Trade') {
+                filterTrade = 'Trade Carlos';
+            }
+
+            initSegmentators();
+            renderPresetButtons();
+            procesarYRenderizar();
+        }
+
+        // === ENGINE DE PROCESAMIENTO Y FILTRADO CRUZADO ===
+        function procesarYRenderizar() {
+            // 1. Filtrar Hoja 1 (Sell In)
+            const sellInFiltrados = BASE_SELL_IN.filter(item => {
+                const matchAgencia = filterAgencia === 'Todos' || item.agencia === filterAgencia;
+                const matchVendedor = filterVendedor === 'Todos' || item.vendedor === filterVendedor;
+                const matchCliente = filterCliente === 'Todos' || item.cliente === filterCliente;
+                const matchProducto = filterProducto === 'Todos' || item.producto === filterProducto;
+                return matchAgencia && matchVendedor && matchCliente && matchProducto;
+            });
+
+            // 2. Filtrar Hoja 2 (Trade Marketing) con conexión comercial cruzada inteligente
+            const tradeFiltrados = BASE_TRADE.filter(item => {
+                const matchCliente = filterCliente === 'Todos' || item.cliente === filterCliente;
+                const matchProducto = filterProducto === 'Todos' || item.producto === filterProducto;
+                const matchTrade = filterTrade === 'Todos' || item.trade === filterTrade;
+
+                // Filtrado indirecto desde la Hoja 1 hacia la Hoja 2
+                let matchVendedor = true;
+                let matchAgencia = true;
+
+                if (filterVendedor !== 'Todos') {
+                    const clientesDelVendedor = BASE_SELL_IN
+                        .filter(si => si.vendedor === filterVendedor)
+                        .map(si => si.cliente);
+                    matchVendedor = clientesDelVendedor.includes(item.cliente);
+                }
+
+                if (filterAgencia !== 'Todos') {
+                    const clientesDeAgencia = BASE_SELL_IN
+                        .filter(si => si.agencia === filterAgencia)
+                        .map(si => si.cliente);
+                    matchAgencia = clientesDeAgencia.includes(item.cliente);
+                }
+
+                return matchCliente && matchProducto && matchTrade && matchVendedor && matchAgencia;
+            });
+
+            // 3. Recalcular Métricas Clave (KPIs)
+            const totalFacturacion = sellInFiltrados.reduce((sum, item) => sum + item.valores, 0);
+            const totalUnidades = sellInFiltrados.reduce((sum, item) => sum + item.unidades, 0);
+            const promedioEvacuacion = tradeFiltrados.reduce((sum, item) => sum + item.sellOut, 0);
+            const coberturaPromedioMeses = tradeFiltrados.length === 0 
+                ? 0 
+                : (tradeFiltrados.reduce((sum, item) => sum + item.cobertura, 0) / tradeFiltrados.length).toFixed(1);
+
+            // Actualizar KPIs en el DOM
+            document.getElementById('kpi-facturacion').innerText = `$${totalFacturacion.toLocaleString('es-ES')}`;
+            document.getElementById('kpi-volumen').innerHTML = `${totalUnidades.toLocaleString('es-ES')} <span class="text-sm font-medium text-slate-400">Uds</span>`;
+            document.getElementById('kpi-sellout').innerHTML = `${promedioEvacuacion.toLocaleString('es-ES')} <span class="text-sm font-medium text-slate-400">Uds</span>`;
+            document.getElementById('kpi-cobertura').innerHTML = `${coberturaPromedioMeses} <span class="text-sm font-medium text-slate-400">Meses</span>`;
+
+            // 4. Calcular diagnóstico de stock para barras de riesgo
+            const countQuiebre = tradeFiltrados.filter(i => i.cobertura === 0).length;
+            const countSaludable = tradeFiltrados.filter(i => i.cobertura > 0 && i.cobertura <= 5).length;
+            const countSobrestock = tradeFiltrados.filter(i => i.cobertura > 5).length;
+            const maxVal = Math.max(tradeFiltrados.length, 1);
+
+            document.getElementById('risk-count-quiebre').innerText = `${countQuiebre} SKU(s)`;
+            document.getElementById('risk-bar-quiebre').style.width = `${(countQuiebre / maxVal) * 100}%`;
+
+            document.getElementById('risk-count-saludable').innerText = `${countSaludable} SKU(s)`;
+            document.getElementById('risk-bar-saludable').style.width = `${(countSaludable / maxVal) * 100}%`;
+
+            document.getElementById('risk-count-sobrestock').innerText = `${countSobrestock} SKU(s)`;
+            document.getElementById('risk-bar-sobrestock').style.width = `${(countSobrestock / maxVal) * 100}%`;
+
+            // 5. Inyectar Alertas e Insights Dinámicos
+            renderAlerts();
+
+            // 6. Renderizar tablas
+            renderTables(sellInFiltrados, tradeFiltrados);
+        }
+
+        // Renderizador de Alertas Contextuales
+        function renderAlerts() {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = '';
+
+            const tieneHuguito = filterCliente === 'Huguito SRL' || (filterVendedor === 'Vendedor A' && filterCliente === 'Todos');
+            const tieneDaniels = filterCliente === 'Daniels Industrial' || (filterVendedor === 'Vendedor A' && filterCliente === 'Todos');
+
+            let alertas = [];
+
+            if (tieneHuguito) {
+                alertas.push({
+                    tipo: 'quiebre',
+                    titulo: '🚨 Alerta de Quiebre - Huguito SRL',
+                    desc: 'Kitadol Rapid 400 está en quiebre absoluto (0.0 meses de stock). El cliente está perdiendo venta en góndola. Priorizar un pedido de reposición inmediato.',
+                    action: 'Reposición Prioritaria'
+                });
+                alertas.push({
+                    tipo: 'sobrestock',
+                    titulo: '⚠️ Sobrestock Crítico - Huguito SRL',
+                    desc: 'Kitadol Gel tiene 24.5 meses de stock acumulado. No insistir con Sell In. El equipo de Trade debe implementar exhibiciones especiales y promociones cruzadas.',
+                    action: 'Frenar Sell In'
+                });
+            }
+
+            if (tieneDaniels) {
+                alertas.push({
+                    tipo: 'saturacion',
+                    titulo: '🛑 Saturación Mayorista - Daniels Industrial',
+                    desc: 'Fuerte sobrefacturación en Kitadol Forte (+120% de Sell In) que ha estancado el canal con 11.0 meses de inventario. Pausar el empuje de venta de este SKU de inmediato.',
+                    action: 'Frenar Sell In'
+                });
+            }
+
+            if (alertas.length === 0) {
+                alertas.push({
+                    tipo: 'informacion',
+                    titulo: '💡 Diagnóstico de Canal General',
+                    desc: 'La caída de facturación de Kitadol Forte se debe a la saturación de inventario en los grandes distribuidores (Daniels y Huguito SRL). El consumidor sigue rotando el producto de forma constante.',
+                    action: 'Análisis Continuo'
+                });
+            }
+
+            alertas.forEach(insight => {
+                const div = document.createElement('div');
+                let cardClass = '';
+                if (insight.tipo === 'quiebre') {
+                    cardClass = 'bg-rose-500/10 border-rose-500/20 text-rose-300';
+                } else if (insight.tipo === 'sobrestock' || insight.tipo === 'saturacion') {
+                    cardClass = 'bg-amber-500/10 border-amber-500/20 text-amber-300';
+                } else {
+                    cardClass = 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300';
+                }
+
+                div.className = `p-4 rounded-xl border flex flex-col justify-between ${cardClass}`;
+                div.innerHTML = `
+                    <div>
+                        <h4 class="text-xs font-bold flex items-center gap-1.5 mb-1 text-white">
+                            ${insight.titulo}
+                        </h4>
+                        <p class="text-[11px] leading-relaxed">${insight.desc}</p>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+                        <span>Acción Recomendada:</span>
+                        <span class="px-2 py-0.5 bg-slate-900 text-slate-300 rounded-full border border-slate-800/80">
+                            ${insight.action}
+                        </span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Renderizador de Tablas
+        function renderTables(sellIn, trade) {
+            // Tabla Sell-In (Hoja 1)
+            document.getElementById('count-sellin').innerText = `${sellIn.length} Registros`;
+            const tbodySellIn = document.getElementById('tbody-sellin');
+            tbodySellIn.innerHTML = '';
+
+            if (sellIn.length === 0) {
+                tbodySellIn.innerHTML = `
+                    <tr>
+                        <td colSpan="5" class="py-8 text-center text-slate-500 font-medium">
+                            Sin datos comerciales para los segmentadores seleccionados
+                        </td>
+                    </tr>
+                `;
+            } else {
+                sellIn.forEach(item => {
+                    const isNegative = item.variacion < 0;
+                    const isHuge = item.variacion > 100;
+                    
+                    let badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                    if (isNegative) badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                    if (isHuge) badgeClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse';
+
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-900/30 transition-colors';
+                    row.innerHTML = `
+                        <td class="py-3 px-2">
+                            <div class="font-bold text-white">${item.cliente}</div>
+                            <div class="text-[10px] text-slate-400">${item.vendedor} • ${item.agencia}</div>
+                        </td>
+                        <td class="py-3 px-2 font-medium text-slate-300">${item.producto}</td>
+                        <td class="py-3 px-2 text-right font-extrabold text-white">
+                            $${item.valores.toLocaleString('es-ES')}
+                        </td>
+                        <td class="py-3 px-2 text-center">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
+                                ${item.variacion > 0 ? `+${item.variacion}%` : `${item.variacion}%`}
+                            </span>
+                        </td>
+                        <td class="py-3 px-2">
+                            <span class="text-[10px] text-slate-300 block max-w-[120px] truncate" title="${item.status}">
+                                ${item.status}
+                            </span>
+                        </td>
+                    `;
+                    tbodySellIn.appendChild(row);
+                });
+            }
+
+            // Tabla Trade (Hoja 2)
+            document.getElementById('count-trade').innerText = `${trade.length} Sucursales`;
+            const tbodyTrade = document.getElementById('tbody-trade');
+            tbodyTrade.innerHTML = '';
+
+            if (trade.length === 0) {
+                tbodyTrade.innerHTML = `
+                    <tr>
+                        <td colSpan="5" class="py-8 text-center text-slate-500 font-medium">
+                            Sin datos operativos para los segmentadores seleccionados
+                        </td>
+                    </tr>
+                `;
+            } else {
+                trade.forEach(item => {
+                    let statusColor = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20';
+                    if (item.cobertura === 0) statusColor = 'bg-rose-500/15 text-rose-400 border border-rose-500/20';
+                    else if (item.cobertura > 5) statusColor = 'bg-amber-500/15 text-amber-400 border border-amber-500/20 font-extrabold';
+
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-900/30 transition-colors';
+                    row.innerHTML = `
+                        <td class="py-3 px-2">
+                            <div class="font-bold text-white">${item.cliente}</div>
+                            <div class="text-[10px] text-slate-400">${item.sucursal} • ${item.trade}</div>
+                        </td>
+                        <td class="py-3 px-2 font-medium text-slate-300">${item.producto}</td>
+                        <td class="py-3 px-2 text-right font-extrabold text-white">
+                            ${item.sellOut.toLocaleString('es-ES')} <span class="text-[10px] text-slate-400">Uds</span>
+                        </td>
+                        <td class="py-3 px-2 text-center">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${statusColor}">
+                                ${item.cobertura.toFixed(1)} Meses
+                            </span>
+                        </td>
+                        <td class="py-3 px-2">
+                            <div class="text-[11px] font-semibold text-slate-200">${item.diagnostico}</div>
+                            <div class="text-[9px] text-slate-400 max-w-[150px] truncate" title="${item.comentario}">
+                                ${item.comentario}
+                            </div>
+                        </td>
+                    `;
+                    tbodyTrade.appendChild(row);
+                });
+            }
+        }
+
+        // Inicialización del sistema al cargar la página
+        window.onload = function() {
+            initSegmentators();
+            renderPresetButtons();
+            procesarYRenderizar();
+        };
+    </script>
+</body>
+</html>
